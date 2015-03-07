@@ -1,0 +1,8 @@
+Pour faire fonctionner la sortie audio sur des systèmes Linux modernes
+il faut exécuter les programmes en rajoutant le mot "padsp" devant le
+nom du programme. Par exemple, au lieu de lancer:
+./a.out
+
+il faut lancer:
+padsp ./a.out
+
