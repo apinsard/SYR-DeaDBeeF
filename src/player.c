@@ -1,9 +1,9 @@
 /* L3info - SYR2 - Project - Audio Streaming Player
- * =============================================================================
+ * ============================================================================
  * Player
- * -----------------------------------------------------------------------------
+ * ----------------------------------------------------------------------------
  * The player reads a WAV file passed as argument.
- * -----------------------------------------------------------------------------
+ * ----------------------------------------------------------------------------
  * Antoine Pinsard
  * Feb. 26, 2015
  */
@@ -18,14 +18,15 @@ int main(int argc, char** argv) {
 
   char* filename;
   FILE* file;
-  int   sample_rate;
-  int   sample_size;
-  int   channels;
-  int   audout_fd;
-  char  buffer[BUF_SIZE];
+  int sample_rate;
+  int sample_size;
+  int channels;
+  int audout_fd;
+  char buffer[BUF_SIZE];
 
   if (argc != 2) {
-    fprintf(stderr, "%s expects exactly one argument. %d found.\n", argv[0], argc-1);
+    fprintf(stderr, "%s expects exactly one argument. %d found.\n",
+            argv[0], argc-1);
     exit(1);
   }
 
@@ -44,15 +45,16 @@ int main(int argc, char** argv) {
 
   file = fopen(filename, "r");
   if (file == NULL) {
-    fprintf(stderr, "An error happend while attempting to open %s for reading.\n", filename);
+    fprintf(stderr,
+            "An error happend while attempting to open %s for reading.\n",
+            filename);
     perror("");
     exit(1);
   }
 
-  while (fread(buffer, BUF_SIZE, 1, ) {
-    
-  }
+  //while (fread(buffer, BUF_SIZE, 1, ) {
+  //  
+  //}
 
   return 0;
 }
-
