@@ -1,0 +1,51 @@
+\documentclass[a4paper,10pt,openany,oneside]{report}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[francais]{babel}
+\usepackage{eurosym}
+\usepackage[margin=1.5in]{geometry}
+\usepackage{graphicx}
+\usepackage{fancyhdr}
+\usepackage{xcolor}
+
+\pagestyle{fancy}
+\renewcommand{\headrulewidth}{0pt}
+
+\setlength{\oddsidemargin}{0pt}
+\setlength{\topmargin}{0pt}
+\setlength{\marginparwidth}{0pt}
+\setlength{\headheight}{30pt}
+\setlength{\headwidth}{450pt}
+\setlength{\headsep}{10pt}
+\setlength{\voffset}{0pt}
+\setlength{\hoffset}{0pt}
+\setlength{\footskip}{70pt}
+\setlength{\textwidth}{450pt}
+\setlength{\textheight}{580pt}
+
+\title{SYR DeaDBeeF - Projet SYR2 - Compte Rendu}
+\author{Antoine \bsc{Pinsard}}
+\date{8 Mars 2015}
+
+\makeatletter
+\lhead{\Large{\bf\@title}}
+\lfoot{\footnotesize \color[gray]{0.5} \@title}
+\rfoot{\footnotesize \color[gray]{0.5} \@author / \@date}
+\makeatother
+
+\renewcommand{\thesection}{\arabic{section}}
+
+\begin{document}
+
+\maketitle
+
+\section{Vendredi 6 mars : un lecteur audio}
+
+\subsection{Que se passe-t-il si on déclare une fausse fréquence d'échantillonage à la sortie audio ?}
+
+\subsection{Que se passe-t-il si vous déclarez à la sortie audio que le fichier est mono ?}
+
+\subsection{Que se passe-t-il si vous déclarez à la sortie audio une mauvaise taille d'échantillons ?}
+
+\end{document}

@@ -1,1 +1,4 @@
 *.sw[po]
+bin/*.o
+bin/*.aux
+bin/*.log

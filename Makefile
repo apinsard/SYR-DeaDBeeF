@@ -1,17 +1,25 @@
 CC=gcc -Wall ${CFLAGS}
 
-all: bin/player
+BIN=bin
+SRC=src
 
-bin/player: src/player.c bin/audio.o
+all: $(BIN)/player
+
+$(BIN)/player: $(SRC)/player.c $(BIN)/audio.o
 	$(CC) -o $@ $^
 
-bin/audio.o: src/sysprog-audio/audio.c
+$(BIN)/audio.o: $(SRC)/sysprog-audio/audio.c
 	$(CC) -c -o $@ $^
+
+report: $(SRC)/report.tex
+	pdflatex -output-directory=$(BIN) -jobname=$@ $^
 
 .PHONY: clean
 
 clean:
-	rm bin/*.o
+	rm $(BIN)/*.o
+	rm $(BIN)/*.aux
+	rm $(BIN)/*.log
 
 mrproper:
-	rm bin/*
+	rm $(BIN)/*
