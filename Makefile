@@ -3,16 +3,18 @@ CC=gcc -Wall ${CFLAGS}
 BIN=bin
 SRC=src
 
-all: $(BIN)/player
+all: player report
+
+player: $(BIN)/player
+
+report: $(SRC)/report.tex
+	pdflatex -output-directory=$(BIN) -jobname=$@ $^
 
 $(BIN)/player: $(SRC)/player.c $(BIN)/audio.o
 	$(CC) -o $@ $^
 
 $(BIN)/audio.o: $(SRC)/sysprog-audio/audio.c
 	$(CC) -c -o $@ $^
-
-report: $(SRC)/report.tex
-	pdflatex -output-directory=$(BIN) -jobname=$@ $^
 
 .PHONY: clean
 

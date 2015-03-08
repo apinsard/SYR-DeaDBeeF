@@ -1,17 +1,16 @@
-/* L3info - SYR2 - Project - Audio Streaming Player
+/* L3info - SYR2 Project - SYR DeaDBeeF
  * ============================================================================
  * Player
  * ----------------------------------------------------------------------------
  * The player reads a WAV file passed as argument.
  * ----------------------------------------------------------------------------
  * Antoine Pinsard
- * Feb. 26, 2015
+ * Mar. 8, 2015
  */
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
-
 #include "player.h"
 #include "sysprog-audio/audio.h"
 

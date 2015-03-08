@@ -40,12 +40,34 @@
 
 \maketitle
 
-\section{Vendredi 6 mars : un lecteur audio}
+\section{Un lecteur audio}
 
-\subsection{Que se passe-t-il si on déclare une fausse fréquence d'échantillonage à la sortie audio ?}
+\subsection{Que se passe-t-il si on déclare une fausse fréquence
+            d'échantillonnage à la sortie audio ?}
 
-\subsection{Que se passe-t-il si vous déclarez à la sortie audio que le fichier est mono ?}
+Lorsqu'on déclare une fréquence d'échantillonnage 2 fois plus grande, la
+vitesse de lecture du son est multipliée par 2. Inversement, lorsqu'on déclare
+une fréquence d'échantillonnage 2 fois plus petite, le fichier son est joué
+deux fois plus lentement.
 
-\subsection{Que se passe-t-il si vous déclarez à la sortie audio une mauvaise taille d'échantillons ?}
+Plus la fréquence d'échantillonage est élevée, plus on a capturé d'informations
+sur le son dans un interval de temps donné. Si on renseigne une fréquence x
+fois plus élevée que la fréquence réelle, on va lire x fois plus d'informations
+dans une même période de temps. Ce qui explique le phénomène observé.
+
+\subsection{Que se passe-t-il si vous déclarez à la sortie audio que le fichier
+            est mono ?}
+
+Si on déclare que le fichier est en mono alors qu'il est en stereo, le son est
+plus lent et plus grave. C'est le même effet que lorsqu'on lit une cassette audio magnetique avec une vitesse de rotation plus faible que la normale.
+
+\subsection{Que se passe-t-il si vous déclarez à la sortie audio une mauvaise
+            taille d'échantillons ?}
+
+Ça fait sursauter, enlever vite instinctivement les oreillettes, et baisser le
+volume avant de remettre les écouteurs craintivement l'un après l'autre. On
+entend alors un faible "pshhhh" dans l'oreille gauche et on parvient tout de
+même à reconnaître la mélodie, jouée par un piano Fisher-Price dont les piles
+sont en fin de vie, dans l'oreille droite.
 
 \end{document}
