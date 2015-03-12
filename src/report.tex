@@ -23,10 +23,12 @@
 \setlength{\footskip}{70pt}
 \setlength{\textwidth}{450pt}
 \setlength{\textheight}{580pt}
+\setlength{\parskip}{8pt}
+\setlength{\parindent}{0pt}
 
 \title{SYR DeaDBeeF - Projet SYR2 - Compte Rendu}
 \author{Antoine \bsc{Pinsard}}
-\date{8 Mars 2015}
+\date{12 Mars 2015}
 
 \makeatletter
 \lhead{\Large{\bf\@title}}
@@ -70,5 +72,82 @@ volume avant de remettre les écouteurs craintivement l'un après l'autre. On
 entend alors un faible "pshhhh" dans l'oreille gauche et on parvient tout de
 même à reconnaître la mélodie, jouée par un piano Fisher-Price dont les piles
 sont en fin de vie, dans l'oreille droite.
+
+\section{Streaming audio}
+
+\subsection{Quelles informations doivent être transmises dans chaque
+            datagramme ?}
+
+Un premier datagramme doit contenir les headers du fichier audio :
+
+\begin{itemize}
+    \item taux d'échantillonnage
+    \item taille des échantillons
+    \item nombre de canaux
+\end{itemize}
+
+Ce premier datagramme contiendra également le nombre de paquets qu'il va
+envoyer après celui-ci.
+
+Les paquets suivants doivent contenir une partie du fichier, ainsi qu'un numéro
+afin que le client soit en mesure de lire le fichier dans l'ordre et de se
+rendre compte de l'absence d'un morceau.
+
+\subsection{Que doit faire chaque programme quand il reçoit un tel message ?}
+
+Quand le client reçoit les headers, il prépare un descripteur de fichier avec
+les données reçues.
+
+Quand il reçoit les autres paquets, il les assemble dans un tampon, en
+respectant le numéro des paquets. S'il reçoit le dernier paquet, ou s'il n'a
+pas reçu de paquets depuis 3 secondes, il s'arrête.
+
+\subsection{Protocole de communication}
+
+Le client doit envoyer un premier paquet contenant uniquement le nom du fichier
+qu'il souhaite recevoir.
+
+Si le serveur peut répondre à la demande du client, il envoie alors un premier
+paquet de la forme :
+
+\begin{verbatim}
+OK <sample_rate> <sample_size> <channels> <nb_packets>
+\end{verbatim}
+
+\begin{itemize}
+    \item <sample\_rate> (int) : Le taux d'échantillonnage en Hz
+    \item <sample\_size> (int) : La taille des échantillons en octets
+    \item <channels> (int) : Le nombre de canaux
+    \item <nb\_packets> (int) : Le nombre de paquets à transmettre.
+\end{itemize}
+
+En cas d'erreur, il envoie un premier paquet d'erreur (voir ci-un peu plus bas)
+avec un des codes suivants :
+
+\begin{itemize}
+    \item 1 : Serveur occupé, redemander plus tard.
+    \item 2 : Fichier introuvable
+\end{itemize}
+
+Les paquets suivants sont de la forme :
+
+\begin{verbatim}
+DAT <n> <data>
+\end{verbatim}
+
+\begin{itemize}
+    \item <n> (int) : le numéro du packet
+    \item <data> (bytes) : les données transmises
+\end{itemize}
+
+Les paquets d'erreur sont de la forme :
+
+\begin{verbatim}
+ERR <code>
+\end{verbatim}
+
+\begin{itemize}
+    \item <code> (int) : Un code d'erreur spécifiant la cause de l'erreur.
+\end{itemize}
 
 \end{document}

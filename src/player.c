@@ -7,7 +7,6 @@
  * Antoine Pinsard
  * Mar. 8, 2015
  */
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
