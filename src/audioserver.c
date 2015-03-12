@@ -14,9 +14,24 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
-#include "player.h"
+#include <sys/types.h>
+#include <sys/socket.h>
+#include "audioserver.h"
 #include "sysprog-audio/audio.h"
 
 int main(int argc, char** argv) {
+    int sock;
+    
+    // List files in the local directory
+    // If the list is empty, exit with error.
 
+    // Server initialization
+    sock = socket(AF_INET, SOCK_DGRAM, 0)
+    if (sock < 0) {
+    }
+
+    // Wait for a client request
+    while (true) {
+        
+    }
 }

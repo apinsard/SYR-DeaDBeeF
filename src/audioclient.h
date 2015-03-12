@@ -9,7 +9,7 @@
  * Antoine Pinsard
  * Mar. 12, 2015
  */
-#ifndef _AUDIOSERVER_H_
-#define _AUDIOSERVER_H_
+#ifndef _AUDIOCLIENT_H_
+#define _AUDIOCLIENT_H_
 
 #endif

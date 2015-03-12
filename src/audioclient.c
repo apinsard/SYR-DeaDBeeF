@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
-#include "player.h"
+#include "audioclient.h"
 #include "sysprog-audio/audio.h"
 
 int main(int argc, char** argv) {
