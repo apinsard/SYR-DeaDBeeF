@@ -14,4 +14,7 @@
 #ifndef _AUDIOSERVER_H_
 #define _AUDIOSERVER_H_
 
+#define MAX_NB_CLIENTS 5
+#define MAX_MSG_LENGTH 128
+
 #endif

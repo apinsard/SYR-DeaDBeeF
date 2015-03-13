@@ -115,18 +115,18 @@ OK <sample_rate> <sample_size> <channels> <nb_packets>
 \end{verbatim}
 
 \begin{itemize}
-    \item <sample\_rate> (int) : Le taux d'échantillonnage en Hz
-    \item <sample\_size> (int) : La taille des échantillons en octets
-    \item <channels> (int) : Le nombre de canaux
+    \item <sample\_rate> (int) : Le taux d'échantillonnage en Hz ;
+    \item <sample\_size> (int) : La taille des échantillons en octets ;
+    \item <channels> (int) : Le nombre de canaux ;
     \item <nb\_packets> (int) : Le nombre de paquets à transmettre.
 \end{itemize}
 
-En cas d'erreur, il envoie un premier paquet d'erreur (voir ci-un peu plus bas)
-avec un des codes suivants :
+En cas d'erreur, il envoie un paquet d'erreur (voir ci-un peu plus bas) avec un
+des codes suivants :
 
 \begin{itemize}
-    \item 1 : Serveur occupé, redemander plus tard.
-    \item 2 : Fichier introuvable
+    \item 790526 : Serveur occupé, redemander plus tard ;
+    \item 57005 : Fichier introuvable ;
 \end{itemize}
 
 Les paquets suivants sont de la forme :
@@ -140,6 +140,12 @@ DAT <n> <data>
     \item <data> (bytes) : les données transmises
 \end{itemize}
 
+Afin d'éviter de perdre du temps à envoyer des données inutilement, le client
+doit envoyer un packet \texttt{IMSTILLHERE} tous les 10 paquets reçus. Si le
+serveur envoie 20 packets sans recevoir ce paquet de heartbeat, il envoie un
+dernier paquet d'erreur avec le code \texttt{48807} puis arrête la
+transmission.
+
 Les paquets d'erreur sont de la forme :
 
 \begin{verbatim}
@@ -149,5 +155,10 @@ ERR <code>
 \begin{itemize}
     \item <code> (int) : Un code d'erreur spécifiant la cause de l'erreur.
 \end{itemize}
+
+Les codes d'erreurs ont été détaillés ci-un peu plus haut dans les cas
+concernés. Il existe cependant un dernier code d'erreur : \texttt{2989}. Ce
+code d'erreur est renvoyé lorsqu'une requête est mal formée et n'a pas été
+comprise par le serveur.
 
 \end{document}
