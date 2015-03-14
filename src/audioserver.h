@@ -38,7 +38,11 @@ void create_client_list(struct client_list*);
 int append_client(struct client_list*, struct sockaddr_in*);
 struct sockaddr_in* remove_client(struct client_list*, int);
 int notify_heartbeat(struct client_list*, struct sockaddr_in*);
+void send_file_to_client(struct client_list*, int, char*, int);
 
 void gen_error_message(unsigned char*, unsigned int, const char*);
+
+char* retrieve_filename(unsigned char*);
+int file_is_available(char*, char**);
 
 #endif

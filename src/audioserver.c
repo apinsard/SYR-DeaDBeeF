@@ -119,7 +119,7 @@ int notify_heartbeat(struct client_list* list, struct sockaddr_in* addr) {
     for (client_id = 0; client_id < MAX_NB_CLIENTS; client_id++) {
         client_addr = list->clients[client_id]->addr;
         if (client_addr->sin_port == addr->sin_port &&
-                client_addr->sin_addr.s_addr == addr->sin_addr.s_addr)
+            client_addr->sin_addr.s_addr == addr->sin_addr.s_addr)
         {
             break;
         }
@@ -132,6 +132,13 @@ int notify_heartbeat(struct client_list* list, struct sockaddr_in* addr) {
     list->clients[client_id]->heartbeat_counter = HEARTBEAT_THRESHOLD;
 
     return client_id;
+}
+
+
+void send_file_to_client(struct client_list* list, int client_id,
+                         char* filename, int socket)
+{
+
 }
 
 
@@ -150,7 +157,7 @@ int notify_heartbeat(struct client_list* list, struct sockaddr_in* addr) {
  * error. This message is truncated if too long.
  */
 void gen_error_message(unsigned char* output, unsigned int code,
-        const char* message)
+                       const char* message)
 {
     int i
       , msg_len;
@@ -188,19 +195,33 @@ void gen_error_message(unsigned char* output, unsigned int code,
 }
 
 
+char* retrieve_filename(unsigned char* request) {
+    return NULL;
+}
+
+
+int file_is_available(char* filename, char** available_files) {
+    return 1;
+}
+
+
 int main(int argc, char** argv) {
     int sock
       , bind_err
       , msg_len
       , client_id;
     socklen_t flen;
+    pid_t pid;
     struct sockaddr_in server_addr
                      , client_addr;
     struct client_list cur_served_clients;
     unsigned char msg_buffer[MSG_LENGTH];
+    char* filename;
+    char** available_files;
 
     // List files in the local directory
     // If the list is empty, exit with error.
+    available_files = NULL;
 
     // Server initialization
     sock = socket(AF_INET, SOCK_DGRAM, 0);
@@ -214,7 +235,7 @@ int main(int argc, char** argv) {
     server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
     bind_err = bind(sock, (struct sockaddr *) &server_addr,
-            sizeof(struct sockaddr_in));
+                    sizeof(struct sockaddr_in));
 
     if (bind_err < 0) {
         perror("Failed to bind socket.");
@@ -229,7 +250,7 @@ int main(int argc, char** argv) {
         // Wait for a client request
         flen = sizeof(struct sockaddr_in);
         msg_len = recvfrom(sock, &msg_buffer, MSG_LENGTH, 0,
-                (struct sockaddr *) &client_addr, &flen);
+                           (struct sockaddr *) &client_addr, &flen);
         if (msg_len < 0) {
             perror("Message reception failed.");
             continue;
@@ -238,10 +259,10 @@ int main(int argc, char** argv) {
         // Check the form of the request
         if (msg_buffer[0] != msg_buffer[MSG_LENGTH-1]) {
             gen_error_message(msg_buffer, 0x0BADC0DE,
-                    "I can has cheezburger?");
+                              "I can has cheezburger?");
             msg_len = sendto(sock, msg_buffer, MSG_LENGTH, 0,
-                    (struct sockaddr *) &client_addr,
-                    sizeof(struct sockaddr_in));
+                             (struct sockaddr *) &client_addr,
+                             sizeof(struct sockaddr_in));
             if (msg_len < 0) {
                 perror("Message sending failed.");
             }
@@ -254,31 +275,54 @@ int main(int argc, char** argv) {
                 client_id = append_client(&cur_served_clients, &client_addr);
                 if (client_id < 0) {
                     gen_error_message(msg_buffer, 0x00C0FFEE,
-                            "I'm really sorry, but I'm swamped right now!");
+                                      "I'm really sorry, but I'm swamped "
+                                      "right now!");
                     msg_len = sendto(sock, msg_buffer, MSG_LENGTH, 0,
-                            (struct sockaddr *) &client_addr,
-                            sizeof(struct sockaddr_in));
+                                     (struct sockaddr *) &client_addr,
+                                     sizeof(struct sockaddr_in));
                     if (msg_len < 0) {
                         perror("Message sending failed.");
+                    }
+                }
+                else {
+                    filename = retrieve_filename(msg_buffer);
+                    if (filename == NULL) {
+                        perror("Dynamic allocation failed!");
+                    }
+                    if (file_is_available(filename, available_files) > 0) {
+                        gen_error_message(msg_buffer, 0xDEADF11E,
+                                          "Sorry but the requested file is "
+                                          "not available.");
+                        msg_len = sendto(sock, msg_buffer, MSG_LENGTH, 0,
+                                         (struct sockaddr *) &client_addr,
+                                         sizeof(struct sockaddr_in));
+                        if (msg_len < 0) {
+                            perror("Message sending failed.");
+                        }
+                    }
+                    pid = fork();
+                    if (pid == 0) {
+                        send_file_to_client(&cur_served_clients, client_id,
+                                            filename, sock);
                     }
                 }
                 break;
             case REQ_HEARTBEAT:
                 client_id = notify_heartbeat(&cur_served_clients,
-                        &client_addr);
+                                             &client_addr);
                 if (client_id < 0) {
                     gen_error_message(msg_buffer, 0xDEADBEA7,
-                            "Undead alert, undead alert class! "
-                            "You too believe in the flying "
-                            "spaghetti monster ? You bobblehead !");
+                                      "Undead alert, undead alert class! "
+                                      "You too believe in the flying "
+                                      "spaghetti monster ? You bobblehead !");
                 }
                 break;
             default:
                 gen_error_message(msg_buffer, 0x0BADC0DE,
-                        "I have no idea what I'm doing.");
+                                  "I have no idea what I'm doing.");
                 msg_len = sendto(sock, msg_buffer, MSG_LENGTH, 0,
-                        (struct sockaddr *) &client_addr,
-                        sizeof(struct sockaddr_in));
+                                 (struct sockaddr *) &client_addr,
+                                 sizeof(struct sockaddr_in));
                 if (msg_len < 0) {
                     perror("Message sending failed.");
                 }
