@@ -190,12 +190,12 @@ void gen_error_message(unsigned char* output, unsigned int code,
 
 int main(int argc, char** argv) {
     int sock
-        , bind_err
-        , msg_len
-        , client_id;
+      , bind_err
+      , msg_len
+      , client_id;
     socklen_t flen;
     struct sockaddr_in server_addr
-        , client_addr;
+                     , client_addr;
     struct client_list cur_served_clients;
     unsigned char msg_buffer[MSG_LENGTH];
 
