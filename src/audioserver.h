@@ -17,4 +17,12 @@
 #define MAX_NB_CLIENTS 5
 #define MAX_MSG_LENGTH 128
 
+struct cli_list {
+    int nb_clients;
+    struct sockaddr_in* list[MAX_NB_CLIENTS];
+};
+
+int append_client(struct sockaddr_in*);
+int remove_client(struct sockaddr_in*);
+
 #endif
