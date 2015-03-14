@@ -164,7 +164,9 @@ Où \texttt{null} est ignoré.
 
 Si le serveur envoie 20 packets à la suite sans recevoir ce paquet, il envoie
 un dernier paquet d'erreur avec le code \texttt{0xDEADBEA7} puis arrête la
-transmission.
+transmission. Ce code est également envoyé lorsque le serveur reçoit un
+heartbeat alors qu'il n'a aucun client actuellement servi à l'adresse de
+l'émetteur.
 
 Les paquets d'erreur sont de la forme :
 

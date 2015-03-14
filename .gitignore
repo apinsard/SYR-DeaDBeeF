@@ -1,6 +1,2 @@
 *.sw[po]
-bin/*.o
-bin/*.aux
-bin/*.log
-bin/player
-bin/report.pdf
+bin/*
