@@ -28,7 +28,7 @@
 
 \title{SYR DeaDBeeF - Projet SYR2 - Compte Rendu}
 \author{Antoine \bsc{Pinsard}}
-\date{12 Mars 2015}
+\date{14 Mars 2015}
 
 \makeatletter
 \lhead{\Large{\bf\@title}}
@@ -104,61 +104,85 @@ pas reçu de paquets depuis 3 secondes, il s'arrête.
 
 \subsection{Protocole de communication}
 
-Le client doit envoyer un premier paquet contenant uniquement le nom du fichier
-qu'il souhaite recevoir.
+La taille de chaque paquet doit être de 128 octets. Le premier octet ainsi que
+le dernier représentent le code de l'instruction. Les arguments sont entre
+chevrons, suivis du nombre d'octets qu'ils occupent entre parenthèses.
+
+Le client doit envoyer un premier paquet de la forme :
+
+\begin{verbatim}
+0xDE <filename>(126) 0xDE
+\end{verbatim}
+
+Où \texttt{filename} est le nom du fichier demandé sous forme de chaine de
+caractères. Notons qu'il n'est pas possible de demander un fichier dont le nom
+dépasse 126 octets.
 
 Si le serveur peut répondre à la demande du client, il envoie alors un premier
 paquet de la forme :
 
 \begin{verbatim}
-OK <sample_rate> <sample_size> <channels> <nb_packets>
+0xEA <samp_rate>(4) <samp_size>(4) <chans>(4) <nb_packets>(4) <null>(130) 0xEA
 \end{verbatim}
 
 \begin{itemize}
-    \item <sample\_rate> (int) : Le taux d'échantillonnage en Hz ;
-    \item <sample\_size> (int) : La taille des échantillons en octets ;
-    \item <channels> (int) : Le nombre de canaux ;
-    \item <nb\_packets> (int) : Le nombre de paquets à transmettre.
+    \item \texttt{<samp\_rate> (int)} : Le taux d'échantillonnage en Hz ;
+    \item \texttt{<samp\_size> (int)} : La taille des échantillons en octets ;
+    \item \texttt{<chans> (int)} : Le nombre de canaux ;
+    \item \texttt{<nb\_packets> (int)} : Le nombre de paquets à transmettre ;
+    \item \texttt{<null>} : octets ignorés.
 \end{itemize}
 
 En cas d'erreur, il envoie un paquet d'erreur (voir ci-un peu plus bas) avec un
 des codes suivants :
 
 \begin{itemize}
-    \item 790526 : Serveur occupé, redemander plus tard ;
-    \item 57005 : Fichier introuvable ;
+    \item \texttt{0x00C0FFEE} : Serveur occupé, redemander plus tard ;
+    \item \texttt{0xDEADF11E} : Fichier introuvable.
 \end{itemize}
 
 Les paquets suivants sont de la forme :
 
 \begin{verbatim}
-DAT <n> <data>
+0xAD <n>(4) <data>(122) 0xAD
 \end{verbatim}
 
 \begin{itemize}
-    \item <n> (int) : le numéro du packet
-    \item <data> (bytes) : les données transmises
+    \item \texttt{<n> (int)} : le numéro du packet ;
+    \item \texttt{<data>} : les données transmises.
 \end{itemize}
 
 Afin d'éviter de perdre du temps à envoyer des données inutilement, le client
-doit envoyer un packet \texttt{IMSTILLHERE} tous les 10 paquets reçus. Si le
-serveur envoie 20 packets sans recevoir ce paquet de heartbeat, il envoie un
-dernier paquet d'erreur avec le code \texttt{48807} puis arrête la
+doit envoyer un signe de vie tous les 10 paquets reçus. Ce paquet est de la
+forme :
+
+\begin{verbatim}
+0xDB <null>(126) 0xDB
+\end{verbatim}
+
+Où \texttt{null} est ignoré.
+
+Si le serveur envoie 20 packets à la suite sans recevoir ce paquet, il envoie
+un dernier paquet d'erreur avec le code \texttt{0xDEADBEA7} puis arrête la
 transmission.
 
 Les paquets d'erreur sont de la forme :
 
 \begin{verbatim}
-ERR <code>
+0xEF <code>(4) <message>(122) 0xEF
 \end{verbatim}
 
 \begin{itemize}
     \item <code> (int) : Un code d'erreur spécifiant la cause de l'erreur.
+    \item <message> (char[]) : Un message lisible par un humain.
 \end{itemize}
 
 Les codes d'erreurs ont été détaillés ci-un peu plus haut dans les cas
-concernés. Il existe cependant un dernier code d'erreur : \texttt{2989}. Ce
-code d'erreur est renvoyé lorsqu'une requête est mal formée et n'a pas été
-comprise par le serveur.
+concernés. Il existe également deux codes d'erreurs génériques :
+
+\begin{itemize}
+    \item \texttt{0x0BADC0DE} : Requête mal formée ;
+    \item \texttt{0xDEADDEAD} : Le serveur a reçu l'ordre de s'arrêter.
+\end{itemize}
 
 \end{document}
