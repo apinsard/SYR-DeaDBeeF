@@ -12,6 +12,7 @@
 #ifndef _AUDIOCLIENT_H_
 #define _AUDIOCLIENT_H_
 
+#include <arpa/inet.h>
 #include "deadbeef.h"
 
 

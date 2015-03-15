@@ -3,7 +3,7 @@ CC=gcc -Wall ${CFLAGS}
 BIN=bin
 SRC=src
 
-all: player server client report
+all: player server client
 
 player: $(BIN)/player
 
@@ -14,10 +14,13 @@ client: $(BIN)/audioclient
 report: $(SRC)/report.tex
 	pdflatex -output-directory=$(BIN) -jobname=$@ $^
 
-$(BIN)/%: $(SRC)/%.c $(BIN)/audio.o
+$(BIN)/%: $(SRC)/%.c $(BIN)/audio.o $(BIN)/deadbeef.o
 	$(CC) -o $@ $^
 
 $(BIN)/audio.o: $(SRC)/sysprog-audio/audio.c
+	$(CC) -c -o $@ $^
+
+$(BIN)/deadbeef.o: $(SRC)/deadbeef.c
 	$(CC) -c -o $@ $^
 
 .PHONY: clean mrproper player server client report

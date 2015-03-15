@@ -8,23 +8,10 @@
  * When the file is entirely read, the server closes the file and waits for the
  * next request.
  * ----------------------------------------------------------------------------
- * TODO:
- *  - Handle propagation of SIGTERM to the children
  * Antoine Pinsard
  * Mar. 15, 2015
  */
-#include <stdlib.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <string.h>
-#include <assert.h>
-#include <glob.h>
-#include <signal.h>
-#include <sys/ipc.h>
-#include <sys/shm.h>
-#include <wait.h>
 #include "audioserver.h"
-#include "sysprog-audio/audio.h"
 
 
 volatile sig_atomic_t done = 0;
@@ -70,7 +57,7 @@ void destroy_client_list(struct client_list* list, int sock) {
     shmid = list->shmid;
 
     for (i = 0; i < MAX_NB_CLIENTS; i++) {
-        addr = remove_client(list, i);
+        addr = remove_client(list, i, 1);
         if (addr != NULL) {
             send_error_message(sock, addr, 0xDEADDEAD,
                                "Sorry, I gotta go. My mum's shouting at me.");
@@ -115,9 +102,9 @@ int append_client(struct client_list* list, struct sockaddr_in* addr) {
     assert(client_id < MAX_NB_CLIENTS);
 
     // Create the new client
-    client = malloc(sizeof(struct client*));
+    client = malloc(sizeof(struct client));
     if (client == NULL) {
-        perror("Dynamic allocation failed!");
+        perror("Dynamic allocation failed");
         return -2;
     }
     client->addr = addr;
@@ -135,11 +122,16 @@ int append_client(struct client_list* list, struct sockaddr_in* addr) {
 /**
  * Remove the client with the given ID from the currently served clients list.
  *
+ * Kill the process handler if kill_handler is set;
+ *
  * Return the removed client address.
  * Return NULL if there was no client with the given identifier.
  */
-struct sockaddr_in* remove_client(struct client_list* list, int client_id) {
+struct sockaddr_in* remove_client(struct client_list* list, int client_id,
+                                  int kill_handler)
+{
     struct sockaddr_in* addr;
+    pid_t handler;
 
     assert(list != NULL);
     assert(client_id >= 0);
@@ -149,9 +141,15 @@ struct sockaddr_in* remove_client(struct client_list* list, int client_id) {
         return NULL;
     }
 
+    handler = list->clients[client_id]->handler;
+
     addr = list->clients[client_id]->addr;
     free(list->clients[client_id]);
     list->clients[client_id] = NULL;
+
+    if (kill_handler && handler > 0) {
+        kill(handler, SIGKILL);
+    }
 
     return addr;
 }
@@ -195,30 +193,112 @@ int notify_heartbeat(struct client_list* list, struct sockaddr_in* addr) {
  *
  */
 void send_file_to_client(struct client_list* list, int client_id,
-                         char* filename, int socket)
+                         char* filename, int sock)
 {
-    
-}
+    FILE* file;
+    unsigned long file_length;
+    int sample_rate
+      , sample_size
+      , channels
+      , nb_packets
+      , i
+      , j;
+    struct client* my_client;
+    unsigned char msg_buffer[MSG_LENGTH];
+    char* file_buffer;
 
+    assert(list != NULL);
+    assert(list->clients[client_id] != NULL);
+    assert(filename != NULL);
 
-/**
- * Wrapper of sendto().
- * See: sendto(int, const void*, size_t, int, const struct sockaddr*,
- *             socklen_t)
- */
-int send_message(int sock, struct sockaddr_in* dest, unsigned char* buffer) {
-    int msg_len;
+    my_client = list->clients[client_id];
 
-    assert(dest != NULL);
-    assert(buffer != NULL);
-
-    msg_len = sendto(sock, buffer, MSG_LENGTH, 0, (struct sockaddr *) dest,
-                     sizeof(struct sockaddr_in));
-    if (msg_len < 0) {
-        perror("Message sending failed.");
+    if (aud_readinit(filename, &sample_rate, &sample_size, &channels) < 0) {
+        send_error_message(sock, my_client->addr, 0xDEADF11E,
+                           "An error occured while attempting to read the "
+                           "requested filed.");
+        perror("Error while attempting to read the audio file");
+        remove_client(list, client_id, 0);
+        shmdt((void*) list);
+        free(filename);
+        exit(EXIT_FAILURE);
     }
 
-    return msg_len;
+    file = fopen(filename, "rb");
+    if (file == NULL) {
+        send_error_message(sock, my_client->addr, 0xDEADF11E,
+                           "An error occured while attempting to read the "
+                           "requested filed.");
+        fprintf(stderr,
+                "An error happened while attempting to open %s for reading.\n",
+                filename);
+        perror("");
+        remove_client(list, client_id, 0);
+        shmdt((void*) list);
+        free(filename);
+        exit(EXIT_FAILURE);
+    }
+    free(filename);
+
+    // Get file length
+    fseek(file, 0, SEEK_END);
+    file_length = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    // Allocate buffer
+    file_buffer = (char*) malloc(file_length+1);
+    if (file_buffer == NULL) {
+        perror("Memory error");
+        exit(EXIT_FAILURE);
+    }
+
+    // Read file into buffer
+    fread(file_buffer, file_length, 1, file);
+
+    fclose(file);
+
+    nb_packets = file_length / DATA_LENGTH;
+    if (file_length % DATA_LENGTH != 0)
+        nb_packets++;
+
+    // Build the stream info packet
+    msg_buffer[0] = RESP_STREAMINFO;
+    for (i = 0; i < 4; i++) {
+        msg_buffer[1+i] = (sample_rate >> (8*i)) & 0xFF;
+        msg_buffer[5+i] = (sample_size >> (8*i)) & 0xFF;
+        msg_buffer[9+i] = (channels >> (8*i)) & 0xFF;
+        msg_buffer[13+i] = (nb_packets >> (8*i)) & 0xFF;
+    }
+    // Pad the remaining part of the message with null characters to avoid data
+    // leaks.
+    for (i = 17; i < MSG_LENGTH-2; i++) {
+        msg_buffer[i] = '\0';
+    }
+    msg_buffer[MSG_LENGTH-1] = RESP_STREAMINFO;
+
+    send_message(sock, my_client->addr, msg_buffer);
+
+    for (i = 0; i < nb_packets; i++) {
+        if (i % 1000 == 0)
+            printf("Sending packet %d/%d\n", i, nb_packets);
+        msg_buffer[0] = RESP_DATA;
+        for (j = 0; j < 4; j++) {
+            msg_buffer[1+j] = (i >> (8*i)) & 0xFF;
+        }
+        for (j = 0; j < DATA_LENGTH; j++) {
+            msg_buffer[5+j] = file_buffer[(i*DATA_LENGTH)+j];
+        }
+        msg_buffer[MSG_LENGTH-1] = RESP_DATA;
+        send_message(sock, my_client->addr, msg_buffer);
+        usleep(10000);
+    }
+
+    free(file_buffer);
+
+    remove_client(list, client_id, 0);
+    shmdt((void*) list);
+
+    exit(EXIT_SUCCESS);
 }
 
 
@@ -228,7 +308,7 @@ int send_message(int sock, struct sockaddr_in* dest, unsigned char* buffer) {
  *
  * Valid error codes are:
  *  - 0xDEADBEA7: Heartbeat waiting timeout
- *  - 0xDEADDEAD: Server received a SIGTERM
+ *  - 0xDEADDEAD: Server received a SIGTERM or SIGINT
  *  - 0xDEADF11E: File not found
  *  - 0x0BADC0DE: Bad request not processed (nor processable).
  *  - 0x00C0FFEE: Maximum simultaneous served clients reached.
@@ -330,9 +410,9 @@ char* retrieve_filename(unsigned char* request) {
  */
 char** get_available_files_list() {
     char** filelist;
-    int i;
+    int i
+      , glob_res;
     glob_t pglob;
-    int glob_res;
 
     // Search wave files
     glob_res = glob("*.wav", GLOB_ERR, NULL, &pglob);
@@ -343,12 +423,23 @@ char** get_available_files_list() {
     // Copy found file names to the filelist.
     filelist = malloc((pglob.gl_pathc+1) * sizeof(char*));
     if (filelist == NULL) {
+        globfree(&pglob);
         return NULL;
     }
-    for (i = 0; i < pglob.gl_pathc+1; i++) {
-        filelist[i] = pglob.gl_pathv[i];
+    for (i = 0; i <= pglob.gl_pathc; i++) {
+        if (pglob.gl_pathv[i] == NULL) {
+            filelist[i] = NULL;
+        }
+        else {
+            filelist[i] = strdup(pglob.gl_pathv[i]);
+            if (filelist[i] == NULL) {
+                globfree(&pglob);
+                return NULL;
+            }
+        }
     }
 
+    globfree(&pglob);
     return filelist;
 }
 
@@ -381,11 +472,12 @@ int main(int argc, char** argv) {
     int sock
       , bind_err
       , msg_len
-      , client_id;
+      , client_id
+      , i;
     socklen_t flen;
     pid_t pid;
-    struct sockaddr_in server_addr
-                     , client_addr;
+    struct sockaddr_in server_addr;
+    struct sockaddr_in client_addr;
     struct client_list* cur_served_clients;
     unsigned char msg_buffer[MSG_LENGTH];
     char* filename;
@@ -396,19 +488,20 @@ int main(int argc, char** argv) {
     memset(&action, 0, sizeof(struct sigaction));
     action.sa_handler = term;
     sigaction(SIGTERM, &action, NULL);
+    sigaction(SIGINT, &action, NULL);
 
     // List files in the local directory
     // If the list is empty, exit with error.
     available_files = get_available_files_list();
     if (available_files == NULL) {
-        perror("No wave files found in the current directory.");
+        perror("No wave files found in the current directory");
         exit(EXIT_FAILURE);
     }
 
     // Server initialization
     sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (sock < 0) {
-        perror("Socket creation failed.");
+        perror("Socket creation failed");
         exit(EXIT_FAILURE);
     }
 
@@ -420,7 +513,7 @@ int main(int argc, char** argv) {
                     sizeof(struct sockaddr_in));
 
     if (bind_err < 0) {
-        perror("Failed to bind socket.");
+        perror("Failed to bind socket");
         close(sock);
         exit(EXIT_FAILURE);
     }
@@ -434,7 +527,7 @@ int main(int argc, char** argv) {
         msg_len = recvfrom(sock, &msg_buffer, MSG_LENGTH, 0,
                            (struct sockaddr *) &client_addr, &flen);
         if (msg_len < 0) {
-            perror("Message reception failed.");
+            perror("Message reception failed");
             continue;
         }
 
@@ -457,34 +550,38 @@ int main(int argc, char** argv) {
                 else {
                     filename = retrieve_filename(msg_buffer);
                     if (filename == NULL) {
-                        perror("Dynamic allocation failed!");
+                        perror("Dynamic allocation failed");
+                        break;
                     }
                     if (!file_is_available(filename, available_files)) {
                         send_error_message(sock, &client_addr, 0xDEADF11E,
                                            "Sorry but the requested file is "
                                            "not available.");
                     }
-                    pid = fork();
-                    if (pid < 0) {
-                        send_error_message(sock, &client_addr, 0x00C0FFEE,
-                                           "I am currently facing some issues "
-                                           "and I can't satisfy you request "
-                                           "right now. So sorry for that.");
-                        remove_client(cur_served_clients, client_id);
-                        free(filename);
-                    }
-                    else if (pid == 0) {
-                        send_file_to_client(cur_served_clients, client_id,
-                                            filename, sock);
-                    }
                     else {
-                        cur_served_clients->clients[client_id]->handler = pid;
+                        pid = fork();
+                        if (pid < 0) {
+                            send_error_message(sock, &client_addr, 0x00C0FFEE,
+                                               "I am currently facing some "
+                                               "issues and I can't satisfy "
+                                               "you request right now. So "
+                                               "sorry for that.");
+                            remove_client(cur_served_clients, client_id, 0);
+                        }
+                        else if (pid == 0) {
+                            send_file_to_client(cur_served_clients, client_id,
+                                                filename, sock);
+                        }
+                        else {
+                            cur_served_clients->clients[client_id]
+                                ->handler = pid;
+                        }
                     }
+                    free(filename);
                 }
                 break;
             case REQ_HEARTBEAT:
-                client_id = notify_heartbeat(cur_served_clients,
-                                             &client_addr);
+                client_id = notify_heartbeat(cur_served_clients, &client_addr);
                 if (client_id < 0) {
                     send_error_message(sock, &client_addr, 0xDEADBEA7,
                                        "Undead alert, undead alert class! "
@@ -498,6 +595,9 @@ int main(int argc, char** argv) {
         }
     }
 
+    for (i=0; available_files[i] != NULL; i++) {
+        free(available_files[i]);
+    }
     free(available_files);
     destroy_client_list(cur_served_clients, sock);
 

@@ -14,6 +14,12 @@
 #ifndef _AUDIOSERVER_H_
 #define _AUDIOSERVER_H_
 
+#include <glob.h>
+#include <math.h>
+#include <signal.h>
+#include <wait.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
 #include "deadbeef.h"
 
 #define MAX_NB_CLIENTS 5
@@ -41,11 +47,10 @@ void term(int);
 struct client_list* create_client_list();
 void destroy_client_list(struct client_list*, int);
 int append_client(struct client_list*, struct sockaddr_in*);
-struct sockaddr_in* remove_client(struct client_list*, int);
+struct sockaddr_in* remove_client(struct client_list*, int, int);
 int notify_heartbeat(struct client_list*, struct sockaddr_in*);
 void send_file_to_client(struct client_list*, int, char*, int);
 
-int send_message(int, struct sockaddr_in*, unsigned char*);
 void gen_error_message(unsigned char*, unsigned int, const char*);
 int send_error_message(int, struct sockaddr_in*, unsigned int, const char*);
 
