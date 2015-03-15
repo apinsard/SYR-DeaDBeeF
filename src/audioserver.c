@@ -279,18 +279,18 @@ void send_file_to_client(struct client_list* list, int client_id,
     send_message(sock, my_client->addr, msg_buffer);
 
     for (i = 0; i < nb_packets; i++) {
-        if (i % 1000 == 0)
+        if (i % 100 == 0)
             printf("Sending packet %d/%d\n", i, nb_packets);
         msg_buffer[0] = RESP_DATA;
         for (j = 0; j < 4; j++) {
-            msg_buffer[1+j] = (i >> (8*i)) & 0xFF;
+            msg_buffer[1+j] = (i >> (8*j)) & 0xFF;
         }
         for (j = 0; j < DATA_LENGTH; j++) {
             msg_buffer[5+j] = file_buffer[(i*DATA_LENGTH)+j];
         }
         msg_buffer[MSG_LENGTH-1] = RESP_DATA;
         send_message(sock, my_client->addr, msg_buffer);
-        usleep(10000);
+        usleep(1000);
     }
 
     free(file_buffer);

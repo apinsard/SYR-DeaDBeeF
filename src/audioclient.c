@@ -20,11 +20,12 @@ int main(int argc, char** argv) {
       , sample_rate
       , audout_fd
       , i
-      , j;
+      , packet_id
+      , expected_packet_id;
     socklen_t flen;
     struct sockaddr_in server_addr;
     unsigned char msg_buffer[MSG_LENGTH];
-    char data_buffer[DATA_LENGTH];
+    char* data_buffer;
 
     if (argc < 3) {
         fprintf(stderr, "Usage: audioclient <server_host_name> <file_name>\n");
@@ -108,26 +109,48 @@ int main(int argc, char** argv) {
     audout_fd = aud_writeinit(sample_rate, sample_size, channels);
     if (audout_fd < 0) {
         perror("Error while attempting to play the audio file");
+        close(sock);
         exit(EXIT_FAILURE);
     }
 
-    for (i = 0; i < nb_packets; i++) {
-        if (i % 1000 == 0)
-            printf("Waiting packet %d/%d\n", i, nb_packets);
+    data_buffer = malloc(nb_packets * DATA_LENGTH * sizeof(char));
+    if (data_buffer == NULL) {
+        perror("Dynamic allocation failed");
+        close(sock);
+        exit(EXIT_FAILURE);
+    }
+
+    expected_packet_id = 0;
+    packet_id = -1;
+    while (packet_id < nb_packets-1) {
         msg_len = recvfrom(sock, msg_buffer, MSG_LENGTH, 0,
                            (struct sockaddr*) &server_addr, &flen);
 
         if (msg_len < 0) {
             perror("Message reception failed");
-            close(sock);
-            exit(EXIT_FAILURE);
+            continue;
         }
-        for (j = 0; j < DATA_LENGTH; j++) {
-            data_buffer[j] = msg_buffer[5+j];;
+        packet_id = 0;
+        for (i = 0; i < 4; i++) {
+            packet_id += (msg_buffer[1+i] << (8*i));
         }
-        write(audout_fd, data_buffer, DATA_LENGTH * sizeof(char));
+        while (expected_packet_id < packet_id) {
+            for (i = 0; i < DATA_LENGTH; i++) {
+                data_buffer[(expected_packet_id*DATA_LENGTH)+i] = '\0';
+            }
+            write(audout_fd, data_buffer+(packet_id*DATA_LENGTH),
+                  DATA_LENGTH * sizeof(char));
+            expected_packet_id++;
+        }
+        for (i = 0; i < DATA_LENGTH; i++) {
+            data_buffer[(packet_id*DATA_LENGTH)+i] = msg_buffer[5+i];
+        }
+        write(audout_fd, data_buffer+(packet_id*DATA_LENGTH),
+              DATA_LENGTH * sizeof(char));
+        expected_packet_id = packet_id+1;
     }
 
+    free(data_buffer);
     close(sock);
 
     return EXIT_SUCCESS;
