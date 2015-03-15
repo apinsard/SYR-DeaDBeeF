@@ -7,13 +7,12 @@
  * the data.
  * ----------------------------------------------------------------------------
  * Antoine Pinsard
- * Mar. 12, 2015
+ * Mar. 14, 2015
  */
 #ifndef _AUDIOCLIENT_H_
 #define _AUDIOCLIENT_H_
 
 #include "deadbeef.h"
 
-#define HEARTBEAT_FREQUENCY 10
 
 #endif

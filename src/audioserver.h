@@ -9,7 +9,7 @@
  * next request.
  * ----------------------------------------------------------------------------
  * Antoine Pinsard
- * Mar. 14, 2015
+ * Mar. 15, 2015
  */
 #ifndef _AUDIOSERVER_H_
 #define _AUDIOSERVER_H_
@@ -30,19 +30,27 @@ struct client {
 };
 
 struct client_list {
+    int shmid; // Share memory identifier
+    pid_t handler;
     int nb_clients;
     struct client* clients[MAX_NB_CLIENTS];
 };
 
-void create_client_list(struct client_list*);
+void term(int);
+
+struct client_list* create_client_list();
+void destroy_client_list(struct client_list*, int);
 int append_client(struct client_list*, struct sockaddr_in*);
 struct sockaddr_in* remove_client(struct client_list*, int);
 int notify_heartbeat(struct client_list*, struct sockaddr_in*);
 void send_file_to_client(struct client_list*, int, char*, int);
 
+int send_message(int, struct sockaddr_in*, unsigned char*);
 void gen_error_message(unsigned char*, unsigned int, const char*);
+int send_error_message(int, struct sockaddr_in*, unsigned int, const char*);
 
 char* retrieve_filename(unsigned char*);
+char** get_available_files_list();
 int file_is_available(char*, char**);
 
 #endif
