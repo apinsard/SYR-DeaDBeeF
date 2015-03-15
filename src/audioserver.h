@@ -21,6 +21,7 @@
 
 struct client {
     struct sockaddr_in* addr;
+    pid_t handler;
     int heartbeat_counter;
     // Each message from the client causes the counter to be reset to
     // HEARTBEAT_THRESHOLD.
@@ -31,7 +32,6 @@ struct client {
 
 struct client_list {
     int shmid; // Share memory identifier
-    pid_t handler;
     int nb_clients;
     struct client* clients[MAX_NB_CLIENTS];
 };

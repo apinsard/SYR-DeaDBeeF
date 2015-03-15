@@ -48,7 +48,6 @@ struct client_list* create_client_list() {
 
     list->shmid = shmid;
     list->nb_clients = 0;
-    list->handler = -1;
     for (i = 0; i < MAX_NB_CLIENTS; i++) {
         list->clients[i] = NULL;
     }
@@ -122,6 +121,7 @@ int append_client(struct client_list* list, struct sockaddr_in* addr) {
         return -2;
     }
     client->addr = addr;
+    client->handler = -1;
     client->heartbeat_counter = HEARTBEAT_THRESHOLD;
 
     // Store then new client
@@ -476,6 +476,9 @@ int main(int argc, char** argv) {
                     else if (pid == 0) {
                         send_file_to_client(cur_served_clients, client_id,
                                             filename, sock);
+                    }
+                    else {
+                        cur_served_clients->clients[client_id]->handler = pid;
                     }
                 }
                 break;
