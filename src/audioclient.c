@@ -19,13 +19,15 @@ int main(int argc, char** argv) {
       , sample_size
       , sample_rate
       , audout_fd
+      , shmid
       , i
       , packet_id
-      , expected_packet_id;
+      , packets_received;
     socklen_t flen;
+    pid_t pid;
     struct sockaddr_in server_addr;
     unsigned char msg_buffer[MSG_LENGTH];
-    char* data_buffer;
+    unsigned char* data_buffer;
 
     if (argc < 3) {
         fprintf(stderr, "Usage: audioclient <server_host_name> <file_name>\n");
@@ -113,45 +115,67 @@ int main(int argc, char** argv) {
         exit(EXIT_FAILURE);
     }
 
-    data_buffer = malloc(nb_packets * DATA_LENGTH * sizeof(char));
+    shmid = shmget(IPC_PRIVATE,
+                   nb_packets * DATA_LENGTH * sizeof(unsigned char), 0600);
+    if (shmid == -1) {
+        perror("Unable to allocate shared memory");
+        close(sock);
+        exit(EXIT_FAILURE);
+    }
+    data_buffer = (unsigned char*) shmat(shmid, NULL, 0);
     if (data_buffer == NULL) {
-        perror("Dynamic allocation failed");
+        perror("Shared memory attachment failed");
+        shmctl(shmid, IPC_RMID, NULL);
         close(sock);
         exit(EXIT_FAILURE);
     }
 
-    expected_packet_id = 0;
-    packet_id = -1;
-    while (packet_id < nb_packets-1) {
-        msg_len = recvfrom(sock, msg_buffer, MSG_LENGTH, 0,
-                           (struct sockaddr*) &server_addr, &flen);
-
-        if (msg_len < 0) {
-            perror("Message reception failed");
-            continue;
-        }
-        packet_id = 0;
-        for (i = 0; i < 4; i++) {
-            packet_id += (msg_buffer[1+i] << (8*i));
-        }
-        while (expected_packet_id < packet_id) {
-            for (i = 0; i < DATA_LENGTH; i++) {
-                data_buffer[(expected_packet_id*DATA_LENGTH)+i] = '\0';
+    pid = fork();
+    if (pid == -1) {
+        perror("Fork failed");
+        shmdt((void*) data_buffer);
+        shmctl(shmid, IPC_RMID, NULL);
+        close(sock);
+        exit(EXIT_FAILURE);
+    }
+    else if (pid == 0) {
+        packet_id = -1;
+        packets_received = 0;
+        while (packets_received < nb_packets) {
+            msg_len = recvfrom(sock, msg_buffer, MSG_LENGTH, 0,
+                               (struct sockaddr*) &server_addr, &flen);
+            if (msg_len < 0) {
+                perror("Message reception failed");
+                packets_received++;
+                continue;
             }
-            write(audout_fd, data_buffer+(packet_id*DATA_LENGTH),
-                  DATA_LENGTH * sizeof(char));
-            expected_packet_id++;
+            packet_id = 0;
+            for (i = 0; i < 4; i++) {
+                packet_id += (msg_buffer[1+i] << (8*i));
+            }
+            for (i = 0; i < DATA_LENGTH; i++) {
+                data_buffer[(packet_id*DATA_LENGTH)+i] = msg_buffer[5+i];
+            }
+            packets_received++;
         }
-        for (i = 0; i < DATA_LENGTH; i++) {
-            data_buffer[(packet_id*DATA_LENGTH)+i] = msg_buffer[5+i];
+    }
+    else {
+        for (i = 0; i < nb_packets; i++) {
+            write(audout_fd, data_buffer+(i*DATA_LENGTH),
+                  DATA_LENGTH * sizeof(unsigned char));
         }
-        write(audout_fd, data_buffer+(packet_id*DATA_LENGTH),
-              DATA_LENGTH * sizeof(char));
-        expected_packet_id = packet_id+1;
     }
 
-    free(data_buffer);
+
+    shmdt((void*)data_buffer);
     close(sock);
+
+    printf("%d: I'm done\n", pid);
+
+    if (pid == 0) {
+        wait(NULL);
+        shmctl(shmid, IPC_RMID, NULL);
+    }
 
     return EXIT_SUCCESS;
 }

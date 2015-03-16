@@ -31,7 +31,14 @@ struct client_list* create_client_list() {
     struct client_list* list;
 
     shmid = shmget(IPC_PRIVATE, sizeof(struct client_list), 0600);
-    list = (struct client_list*) shmat(shmid, 0, 0);
+    if (shmid == -1) {
+        return NULL;
+    }
+    list = (struct client_list*) shmat(shmid, NULL, 0);
+    if (list == NULL) {
+        shmctl(shmid, IPC_RMID, NULL);
+        return NULL;
+    }
 
     list->shmid = shmid;
     list->nb_clients = 0;
@@ -68,7 +75,7 @@ void destroy_client_list(struct client_list* list, int sock) {
 
     shmdt((void *) list);
     wait(NULL);
-    shmctl(shmid, IPC_RMID, 0);
+    shmctl(shmid, IPC_RMID, NULL);
 }
 
 
@@ -279,8 +286,6 @@ void send_file_to_client(struct client_list* list, int client_id,
     send_message(sock, my_client->addr, msg_buffer);
 
     for (i = 0; i < nb_packets; i++) {
-        if (i % 100 == 0)
-            printf("Sending packet %d/%d\n", i, nb_packets);
         msg_buffer[0] = RESP_DATA;
         for (j = 0; j < 4; j++) {
             msg_buffer[1+j] = (i >> (8*j)) & 0xFF;
@@ -519,6 +524,11 @@ int main(int argc, char** argv) {
     }
 
     cur_served_clients = create_client_list();
+    if (cur_served_clients == NULL) {
+        perror("Failed to create client list");
+        close(sock);
+        exit(EXIT_FAILURE);
+    }
 
     // Client requests handling loop
     while (!done) {
