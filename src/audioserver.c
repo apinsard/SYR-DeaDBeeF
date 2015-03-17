@@ -535,6 +535,13 @@ int main(int argc, char** argv) {
     struct sembuf up = {0, 1, 0};
     struct sembuf down = {0, -1, 0};
 
+    // Print notice
+    printf("SYR2/DeaDBeeF server, Copyright (C) 2015 Antoine Pinsard\n");
+    printf("SYR2/DeaDBeeF comes with ABSOLUTELY NO WARRANTY\n");
+    printf("This is free software, and you are welcome to redistribute it\n");
+    printf("under certains conditions;\n");
+    printf("See http://github.com/apinsard/SYR-DeaDBEEF/\n\n");
+
     // Handle signals
     memset(&action, 0, sizeof(struct sigaction));
     action.sa_handler = term;

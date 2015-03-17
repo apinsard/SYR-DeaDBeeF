@@ -47,6 +47,13 @@ int main(int argc, char** argv) {
     unsigned char msg_buffer[MSG_LENGTH];
     unsigned char* data_buffer;
 
+    // Print notice
+    printf("SYR2/DeaDBeeF client, Copyright (C) 2015 Antoine Pinsard\n");
+    printf("SYR2/DeaDBeeF comes with ABSOLUTELY NO WARRANTY\n");
+    printf("This is free software, and you are welcome to redistribute it\n");
+    printf("under certains conditions;\n");
+    printf("See http://github.com/apinsard/SYR-DeaDBEEF/\n\n");
+
     // Check arguments
     if (argc < 3) {
         fprintf(stderr, "Usage: audioclient <server_host_name> <file_name>\n");
