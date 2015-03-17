@@ -28,7 +28,7 @@
 
 \title{SYR DeaDBeeF - Projet SYR2 - Compte Rendu}
 \author{Antoine \bsc{Pinsard}}
-\date{14 Mars 2015}
+\date{17 Mars 2015}
 
 \makeatletter
 \lhead{\Large{\bf\@title}}
@@ -104,14 +104,14 @@ pas reçu de paquets depuis 3 secondes, il s'arrête.
 
 \subsection{Protocole de communication}
 
-La taille de chaque paquet doit être de 128 octets. Le premier octet ainsi que
+La taille de chaque paquet doit être de 2048 octets. Le premier octet ainsi que
 le dernier représentent le code de l'instruction. Les arguments sont entre
 chevrons, suivis du nombre d'octets qu'ils occupent entre parenthèses.
 
 Le client doit envoyer un premier paquet de la forme :
 
 \begin{verbatim}
-0xDE <filename>(126) 0xDE
+0xDE <filename>(2046) 0xDE
 \end{verbatim}
 
 Où \texttt{filename} est le nom du fichier demandé sous forme de chaine de
@@ -122,7 +122,7 @@ Si le serveur peut répondre à la demande du client, il envoie alors un premier
 paquet de la forme :
 
 \begin{verbatim}
-0xEA <samp_rate>(4) <samp_size>(4) <chans>(4) <nb_packets>(4) <null>(130) 0xEA
+0xEA <samp_rate>(4) <samp_size>(4) <chans>(4) <nb_packets>(4) <null>(2030) 0xEA
 \end{verbatim}
 
 \begin{itemize}
@@ -144,7 +144,7 @@ des codes suivants :
 Les paquets suivants sont de la forme :
 
 \begin{verbatim}
-0xAD <n>(4) <data>(122) 0xAD
+0xAD <n>(4) <data>(2042) 0xAD
 \end{verbatim}
 
 \begin{itemize}
@@ -157,12 +157,12 @@ doit envoyer un signe de vie tous les 10 paquets reçus. Ce paquet est de la
 forme :
 
 \begin{verbatim}
-0xDB <null>(126) 0xDB
+0xDB <null>(2046) 0xDB
 \end{verbatim}
 
 Où \texttt{null} est ignoré.
 
-Si le serveur envoie 20 packets à la suite sans recevoir ce paquet, il envoie
+Si le serveur envoie 100 packets à la suite sans recevoir ce paquet, il envoie
 un dernier paquet d'erreur avec le code \texttt{0xDEADBEA7} puis arrête la
 transmission. Ce code est également envoyé lorsque le serveur reçoit un
 heartbeat alors qu'il n'a aucun client actuellement servi à l'adresse de
@@ -171,7 +171,7 @@ l'émetteur.
 Les paquets d'erreur sont de la forme :
 
 \begin{verbatim}
-0xEF <code>(4) <message>(122) 0xEF
+0xEF <code>(4) <message>(2042) 0xEF
 \end{verbatim}
 
 \begin{itemize}
