@@ -23,6 +23,9 @@ $(BIN)/audio.o: $(SRC)/sysprog-audio/audio.c
 $(BIN)/deadbeef.o: $(SRC)/deadbeef.c
 	$(CC) -c -o $@ $^
 
+projet-syr2-pinsard.tar.gz: report
+	tar zcf $@ src/* Makefile LICENSE README.md bin/report.pdf
+
 .PHONY: clean mrproper shmclean player server client report
 
 clean:
@@ -30,8 +33,9 @@ clean:
 	rm -f $(BIN)/*.aux
 	rm -f $(BIN)/*.log
 
-mrproper:
+mrproper: clean
 	rm -f $(BIN)/*
+	rm -f projet-syr2-pinsard.tar.gz
 
 shmclean:
 	ipcs -m | awk '{ if ($$6=="0") system("ipcrm shm "$$2""); }'
