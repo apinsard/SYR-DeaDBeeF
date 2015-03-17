@@ -15,4 +15,6 @@
 #include <arpa/inet.h>
 #include "deadbeef.h"
 
+void print_errmess(unsigned char*);
+
 #endif

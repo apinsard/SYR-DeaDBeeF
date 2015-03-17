@@ -216,7 +216,7 @@ int notify_heartbeat(struct client_list* list, struct sockaddr_in* addr) {
 
 
 /**
- *
+ * Handle file sending to a single client.
  */
 void send_file_to_client(struct client_list* list, int client_id,
                          char* filename, int sock, int semid)
@@ -241,6 +241,7 @@ void send_file_to_client(struct client_list* list, int client_id,
 
     my_client = list->clients[client_id];
 
+    // Retrieve audio information
     if (aud_readinit(filename, &sample_rate, &sample_size, &channels) < 0) {
         send_error_message(sock, my_client->addr, 0xDEADF11E,
                            "An error occured while attempting to read the "
@@ -279,6 +280,10 @@ void send_file_to_client(struct client_list* list, int client_id,
     file_buffer = (char*) malloc(file_length+1);
     if (file_buffer == NULL) {
         perror("Memory error");
+        my_client->handler = -1;
+        shmdt((void*) my_client);
+        shmdt((void*) list);
+        free(filename);
         exit(EXIT_FAILURE);
     }
 
