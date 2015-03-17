@@ -319,14 +319,21 @@ void send_file_to_client(struct client_list* list, int client_id,
         msg_buffer[MSG_LENGTH-1] = RESP_DATA;
         send_message(sock, my_client->addr, msg_buffer);
         usleep(5000);
-        semop(semid, &down, 1);
+        if (semop(semid, &down, 1) < 0) {
+            perror("Sem down failed");
+            continue;
+        }
         my_client->heartbeat_counter--;
         if (my_client->heartbeat_counter <= 0) {
-            semop(semid, &up, 1);
+            if (semop(semid, &up, 1) < 0) {
+                perror("Sem up failed");
+            }
             printf("Client timeout.\n");
             break;
         }
-        semop(semid, &up, 1);
+        if (semop(semid, &up, 1) < 0) {
+            perror("Sem up failed");
+        }
     }
 
     free(file_buffer);
@@ -566,7 +573,20 @@ int main(int argc, char** argv) {
     }
 
     semid = semget(IPC_PRIVATE, 1, 0600);
-    semop(semid, &up, 1);
+    if (semid < 0) {
+        perror("Semaphore creation failed");
+        semctl(semid, 0, IPC_RMID);
+        destroy_client_list(cur_served_clients, sock);
+        close(sock);
+        exit(EXIT_FAILURE);
+    }
+    if (semop(semid, &up, 1) < 0) {
+        perror("Sem up failed");
+        destroy_client_list(cur_served_clients, sock);
+        close(sock);
+        exit(EXIT_FAILURE);
+    }
+    
 
     // Client requests handling loop
     while (!done) {
@@ -629,9 +649,14 @@ int main(int argc, char** argv) {
                 }
                 break;
             case REQ_HEARTBEAT:
-                semop(semid, &down, 1);
+                if (semop(semid, &down, 1) < 0) {
+                    perror("Sem down failed");
+                    break;
+                }
                 client_id = notify_heartbeat(cur_served_clients, &client_addr);
-                semop(semid, &up, 1);
+                if (semop(semid, &up, 1) < 0) {
+                    perror("Sem up failed");
+                }
                 if (client_id < 0) {
                     send_error_message(sock, &client_addr, 0xDEADBEA7,
                                        "Undead alert, undead alert class! "
@@ -650,7 +675,6 @@ int main(int argc, char** argv) {
     }
     free(available_files);
     destroy_client_list(cur_served_clients, sock);
-
     semctl(semid, 0, IPC_RMID);
     close(sock);
 
