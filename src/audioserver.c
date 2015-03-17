@@ -89,7 +89,8 @@ void destroy_client_list(struct client_list* list, int sock) {
  *        remove a client from the list.
  */
 int append_client(struct client_list* list, struct sockaddr_in* addr) {
-    int client_id;
+    int client_id
+      , shmid;
     struct client* client;
 
     assert(list != NULL);
@@ -109,7 +110,12 @@ int append_client(struct client_list* list, struct sockaddr_in* addr) {
     assert(client_id < MAX_NB_CLIENTS);
 
     // Create the new client
-    client = malloc(sizeof(struct client));
+    shmid = shmget(IPC_PRIVATE, sizeof(struct client), 0600);
+    if (shmid == -1) {
+        perror("Dynamic allocation failed");
+        return -2;
+    }
+    client = (struct client*) shmat(shmid, NULL, 0);
     if (client == NULL) {
         perror("Dynamic allocation failed");
         return -2;
@@ -295,7 +301,12 @@ void send_file_to_client(struct client_list* list, int client_id,
         }
         msg_buffer[MSG_LENGTH-1] = RESP_DATA;
         send_message(sock, my_client->addr, msg_buffer);
-        usleep(1000);
+        my_client->heartbeat_counter--;
+        usleep(5000);
+        if (my_client->heartbeat_counter <= 0) {
+            printf("Client timeout.\n");
+            break;
+        }
     }
 
     free(file_buffer);

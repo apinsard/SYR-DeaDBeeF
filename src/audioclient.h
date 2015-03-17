@@ -15,5 +15,4 @@
 #include <arpa/inet.h>
 #include "deadbeef.h"
 
-
 #endif

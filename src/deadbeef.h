@@ -18,12 +18,13 @@
 #include <wait.h>
 #include <netinet/in.h>
 #include <sys/ipc.h>
+#include <sys/select.h>
 #include <sys/shm.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include "sysprog-audio/audio.h"
 
-#define MSG_LENGTH 1024
+#define MSG_LENGTH 2048
 #define DATA_LENGTH (MSG_LENGTH - 1 - 4 - 1)
 
 #define REQ_STREAMING 0xDE

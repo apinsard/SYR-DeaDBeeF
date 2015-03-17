@@ -20,30 +20,36 @@ int main(int argc, char** argv) {
       , sample_rate
       , audout_fd
       , shmid
+      , sel
       , i
       , packet_id
       , packets_received;
     socklen_t flen;
     pid_t pid;
-    struct sockaddr_in server_addr;
+    fd_set read_set;
+    struct timeval timeout;
+    struct sockaddr_in server_addr
+                     , recv_addr;
     unsigned char msg_buffer[MSG_LENGTH];
     unsigned char* data_buffer;
 
+    // Check arguments
     if (argc < 3) {
         fprintf(stderr, "Usage: audioclient <server_host_name> <file_name>\n");
         exit(EXIT_FAILURE);
     }
 
+    // Open connection to the server
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(1664);
     server_addr.sin_addr.s_addr = inet_addr(argv[1]);
-
     sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (sock < 0) {
         perror("Socket creation failed");
         exit(EXIT_FAILURE);
     }
 
+    // Send the request
     msg_buffer[0] = REQ_STREAMING;
     for (i = 1; i < MSG_LENGTH-2; i++) {
         if (i-1 < strlen(argv[2])) {
@@ -55,34 +61,32 @@ int main(int argc, char** argv) {
     }
     msg_buffer[MSG_LENGTH-2] = '\0';
     msg_buffer[MSG_LENGTH-1] = REQ_STREAMING;
-
     msg_len = send_message(sock, &server_addr, msg_buffer);
     if (msg_len < 0) {
         close(sock);
         exit(EXIT_FAILURE);
     }
 
+    // Wait for the answer
     flen = sizeof(struct sockaddr_in);
     msg_len = recvfrom(sock, msg_buffer, MSG_LENGTH, 0,
                        (struct sockaddr*) &server_addr, &flen);
-
     if (msg_len < 0) {
         perror("Message reception failed");
         close(sock);
         exit(EXIT_FAILURE);
     }
-
     if (msg_buffer[0] != msg_buffer[MSG_LENGTH-1]) {
         fprintf(stderr, "Bad formated message received");
         close(sock);
         exit(EXIT_FAILURE);
     }
 
+    // Parse answer
     sample_rate = 0;
     sample_size = 0;
     channels = 0;
     nb_packets = 0;
-
     switch (msg_buffer[0]) {
         case RESP_ERROR:
             fprintf(stderr, "error\n");
@@ -108,6 +112,7 @@ int main(int argc, char** argv) {
             exit(EXIT_FAILURE);
     }
 
+    // Init audio file descriptor
     audout_fd = aud_writeinit(sample_rate, sample_size, channels);
     if (audout_fd < 0) {
         perror("Error while attempting to play the audio file");
@@ -115,8 +120,10 @@ int main(int argc, char** argv) {
         exit(EXIT_FAILURE);
     }
 
+    // Create a buffer to store received data
     shmid = shmget(IPC_PRIVATE,
-                   nb_packets * DATA_LENGTH * sizeof(unsigned char), 0600);
+                   nb_packets * DATA_LENGTH * sizeof(unsigned char),
+                   0600);
     if (shmid == -1) {
         perror("Unable to allocate shared memory");
         close(sock);
@@ -130,6 +137,8 @@ int main(int argc, char** argv) {
         exit(EXIT_FAILURE);
     }
 
+    // Create a subprocess to read the buffer and write it to the audio fd.
+    // The parent handles messages reception from the server.
     pid = fork();
     if (pid == -1) {
         perror("Fork failed");
@@ -140,13 +149,28 @@ int main(int argc, char** argv) {
     }
     else if (pid == 0) {
         packet_id = -1;
-        packets_received = 0;
-        while (packets_received < nb_packets) {
+        for (packets_received = 0; packets_received < nb_packets;
+             packets_received++)
+        {
+            FD_ZERO(&read_set);
+            FD_SET(sock, &read_set);
+            timeout.tv_sec = 5;
+            timeout.tv_usec = 0;
+            sel = select(sock+1, &read_set, NULL, NULL, &timeout);
+            if (sel < 0) {
+                perror("Timeout error");
+                continue;
+            }
+            if (sel == 0) {
+                fprintf(stderr, "Server connection timeout.\n"
+                                "Received %d/%d packets\n", packets_received,
+                        nb_packets);
+                break;
+            }
             msg_len = recvfrom(sock, msg_buffer, MSG_LENGTH, 0,
                                (struct sockaddr*) &server_addr, &flen);
             if (msg_len < 0) {
                 perror("Message reception failed");
-                packets_received++;
                 continue;
             }
             packet_id = 0;
@@ -156,7 +180,11 @@ int main(int argc, char** argv) {
             for (i = 0; i < DATA_LENGTH; i++) {
                 data_buffer[(packet_id*DATA_LENGTH)+i] = msg_buffer[5+i];
             }
-            packets_received++;
+            if (packets_received % HEARTBEAT_FREQUENCY == 0) {
+                msg_buffer[0] = REQ_HEARTBEAT;
+                msg_buffer[MSG_LENGTH-1] = REQ_HEARTBEAT;
+                send_message(sock, &server_addr, msg_buffer);
+            }
         }
     }
     else {
@@ -165,7 +193,6 @@ int main(int argc, char** argv) {
                   DATA_LENGTH * sizeof(unsigned char));
         }
     }
-
 
     shmdt((void*)data_buffer);
     close(sock);

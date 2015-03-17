@@ -17,13 +17,10 @@
 #include <glob.h>
 #include <math.h>
 #include <signal.h>
-#include <wait.h>
-#include <sys/ipc.h>
-#include <sys/shm.h>
 #include "deadbeef.h"
 
 #define MAX_NB_CLIENTS 5
-#define HEARTBEAT_THRESHOLD (5 * HEARTBEAT_FREQUENCY)
+#define HEARTBEAT_THRESHOLD (10 * HEARTBEAT_FREQUENCY)
 
 struct client {
     struct sockaddr_in* addr;
