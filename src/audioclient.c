@@ -213,6 +213,7 @@ int main(int argc, char** argv) {
         }
     }
     else {
+        sleep(1); // Wait to receive some data before starting
         for (i = 0; i < nb_packets; i++) {
             write(audout_fd, data_buffer+(i*DATA_LENGTH),
                   DATA_LENGTH * sizeof(unsigned char));
