@@ -34,7 +34,7 @@
 #define RESP_DATA 0xAD
 #define RESP_ERROR 0xEF
 
-#define HEARTBEAT_FREQUENCY 10
+#define HEARTBEAT_FREQUENCY 100
 
 int send_message(int, struct sockaddr_in*, unsigned char*);
 

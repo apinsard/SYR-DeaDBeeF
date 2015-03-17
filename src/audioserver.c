@@ -323,7 +323,7 @@ void send_file_to_client(struct client_list* list, int client_id,
         }
         msg_buffer[MSG_LENGTH-1] = RESP_DATA;
         send_message(sock, my_client->addr, msg_buffer);
-        usleep(5000);
+        usleep(10000);
         if (semop(semid, &down, 1) < 0) {
             perror("Sem down failed");
             continue;

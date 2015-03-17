@@ -21,7 +21,7 @@
 #include "deadbeef.h"
 
 #define MAX_NB_CLIENTS 5
-#define HEARTBEAT_THRESHOLD (10 * HEARTBEAT_FREQUENCY)
+#define HEARTBEAT_THRESHOLD (5 * HEARTBEAT_FREQUENCY)
 
 struct client {
     int shmid; // Share memory identifier
