@@ -17,6 +17,7 @@
 #include <glob.h>
 #include <math.h>
 #include <signal.h>
+#include <sys/sem.h>
 #include "deadbeef.h"
 
 #define MAX_NB_CLIENTS 5
@@ -47,7 +48,7 @@ void destroy_client_list(struct client_list*, int);
 int append_client(struct client_list*, struct sockaddr_in*);
 struct sockaddr_in* remove_client(struct client_list*, int, int);
 int notify_heartbeat(struct client_list*, struct sockaddr_in*);
-void send_file_to_client(struct client_list*, int, char*, int);
+void send_file_to_client(struct client_list*, int, char*, int, int);
 
 void gen_error_message(unsigned char*, unsigned int, const char*);
 int send_error_message(int, struct sockaddr_in*, unsigned int, const char*);

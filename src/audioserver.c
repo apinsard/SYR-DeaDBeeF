@@ -219,7 +219,7 @@ int notify_heartbeat(struct client_list* list, struct sockaddr_in* addr) {
  *
  */
 void send_file_to_client(struct client_list* list, int client_id,
-                         char* filename, int sock)
+                         char* filename, int sock, int semid)
 {
     FILE* file;
     unsigned long file_length;
@@ -232,6 +232,8 @@ void send_file_to_client(struct client_list* list, int client_id,
     struct client* my_client;
     unsigned char msg_buffer[MSG_LENGTH];
     char* file_buffer;
+    struct sembuf up = {0, 1, 0};
+    struct sembuf down = {0, -1, 0};
 
     assert(list != NULL);
     assert(list->clients[client_id] != NULL);
@@ -316,12 +318,15 @@ void send_file_to_client(struct client_list* list, int client_id,
         }
         msg_buffer[MSG_LENGTH-1] = RESP_DATA;
         send_message(sock, my_client->addr, msg_buffer);
-        my_client->heartbeat_counter--;
         usleep(5000);
+        semop(semid, &down, 1);
+        my_client->heartbeat_counter--;
         if (my_client->heartbeat_counter <= 0) {
+            semop(semid, &up, 1);
             printf("Client timeout.\n");
             break;
         }
+        semop(semid, &up, 1);
     }
 
     free(file_buffer);
@@ -505,6 +510,7 @@ int main(int argc, char** argv) {
       , bind_err
       , msg_len
       , client_id
+      , semid
       , i;
     socklen_t flen;
     pid_t pid;
@@ -515,6 +521,8 @@ int main(int argc, char** argv) {
     char* filename;
     char** available_files;
     struct sigaction action;
+    struct sembuf up = {0, 1, 0};
+    struct sembuf down = {0, -1, 0};
 
     // Handle signals
     memset(&action, 0, sizeof(struct sigaction));
@@ -556,6 +564,9 @@ int main(int argc, char** argv) {
         close(sock);
         exit(EXIT_FAILURE);
     }
+
+    semid = semget(IPC_PRIVATE, 1, 0600);
+    semop(semid, &up, 1);
 
     // Client requests handling loop
     while (!done) {
@@ -607,7 +618,7 @@ int main(int argc, char** argv) {
                         }
                         else if (pid == 0) {
                             send_file_to_client(cur_served_clients, client_id,
-                                                filename, sock);
+                                                filename, sock, semid);
                         }
                         else {
                             cur_served_clients->clients[client_id]
@@ -618,7 +629,9 @@ int main(int argc, char** argv) {
                 }
                 break;
             case REQ_HEARTBEAT:
+                semop(semid, &down, 1);
                 client_id = notify_heartbeat(cur_served_clients, &client_addr);
+                semop(semid, &up, 1);
                 if (client_id < 0) {
                     send_error_message(sock, &client_addr, 0xDEADBEA7,
                                        "Undead alert, undead alert class! "
@@ -638,6 +651,7 @@ int main(int argc, char** argv) {
     free(available_files);
     destroy_client_list(cur_served_clients, sock);
 
+    semctl(semid, 0, IPC_RMID);
     close(sock);
 
     return EXIT_SUCCESS;
