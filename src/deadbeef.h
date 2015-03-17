@@ -26,6 +26,7 @@
 
 #define MSG_LENGTH 2048
 #define DATA_LENGTH (MSG_LENGTH - 1 - 4 - 1)
+#define MESSERR_LENGTH (MSG_LENGTH - 1 - 4 - 1)
 
 #define REQ_STREAMING 0xDE
 #define REQ_HEARTBEAT 0xDB

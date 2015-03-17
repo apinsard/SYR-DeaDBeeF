@@ -244,7 +244,7 @@ void send_file_to_client(struct client_list* list, int client_id,
     if (aud_readinit(filename, &sample_rate, &sample_size, &channels) < 0) {
         send_error_message(sock, my_client->addr, 0xDEADF11E,
                            "An error occured while attempting to read the "
-                           "requested filed.");
+                           "requested file.");
         perror("Error while attempting to read the audio file");
         my_client->handler = -1;
         shmdt((void*) my_client);
@@ -257,7 +257,7 @@ void send_file_to_client(struct client_list* list, int client_id,
     if (file == NULL) {
         send_error_message(sock, my_client->addr, 0xDEADF11E,
                            "An error occured while attempting to read the "
-                           "requested filed.");
+                           "requested file.");
         fprintf(stderr,
                 "An error happened while attempting to open %s for reading",
                 filename);
@@ -329,6 +329,8 @@ void send_file_to_client(struct client_list* list, int client_id,
                 perror("Sem up failed");
             }
             printf("Client timeout.\n");
+            send_error_message(sock, my_client->addr, 0xDEADBEA7,
+                               "Bist du tot oder was ?");
             break;
         }
         if (semop(semid, &up, 1) < 0) {
@@ -621,7 +623,7 @@ int main(int argc, char** argv) {
                         perror("Dynamic allocation failed");
                         break;
                     }
-                    if (!file_is_available(filename, available_files)) {
+                    if (file_is_available(filename, available_files) == 0) {
                         send_error_message(sock, &client_addr, 0xDEADF11E,
                                            "Sorry but the requested file is "
                                            "not available.");

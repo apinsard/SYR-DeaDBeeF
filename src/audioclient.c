@@ -11,6 +11,20 @@
  */
 #include "audioclient.h"
 
+void print_errmess(unsigned char* raw_msg) {
+    int errcode
+      , i;
+    char message[MESSERR_LENGTH];
+
+    errcode = 0;
+    for (i = 0; i < 4; i++) {
+        errcode += (raw_msg[1+i] << (8*i));
+    }
+    strncpy(message, (char*) raw_msg+5, MESSERR_LENGTH);
+    message[MESSERR_LENGTH-1] = '\0';
+    printf("Error 0x%x, server said: %s\n", errcode, message);
+}
+
 int main(int argc, char** argv) {
     int sock
       , msg_len
@@ -88,7 +102,7 @@ int main(int argc, char** argv) {
     nb_packets = 0;
     switch (msg_buffer[0]) {
         case RESP_ERROR:
-            fprintf(stderr, "error\n");
+            print_errmess(msg_buffer);
             close(sock);
             exit(EXIT_FAILURE);
             break;
@@ -172,6 +186,18 @@ int main(int argc, char** argv) {
                 perror("Message reception failed");
                 continue;
             }
+            if (msg_buffer[0] != msg_buffer[MSG_LENGTH-1]) {
+                perror("Bad formed response");
+                continue;
+            }
+            if (msg_buffer[0] == RESP_ERROR) {
+                print_errmess(msg_buffer);
+                break;
+            }
+            if (msg_buffer[0] != RESP_DATA) {
+                fprintf(stderr, "Unexpected response.\n");
+                continue;
+            }
             packet_id = 0;
             for (i = 0; i < 4; i++) {
                 packet_id += (msg_buffer[1+i] << (8*i));
@@ -195,8 +221,6 @@ int main(int argc, char** argv) {
 
     shmdt((void*)data_buffer);
     close(sock);
-
-    printf("%d: I'm done\n", pid);
 
     if (pid == 0) {
         wait(NULL);
