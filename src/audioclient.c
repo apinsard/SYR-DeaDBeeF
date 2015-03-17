@@ -1,3 +1,4 @@
+/* Distributed under the terms of the GNU General Public License v2 */
 /* L3info - SYR2 Project - SYR DeaDBeeF
  * ============================================================================
  * Audio Client
@@ -7,7 +8,7 @@
  * the data.
  * ----------------------------------------------------------------------------
  * Antoine Pinsard
- * Mar. 12, 2015
+ * Mar. 17, 2015
  */
 #include "audioclient.h"
 

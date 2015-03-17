@@ -1,3 +1,4 @@
+/* Distributed under the terms of the GNU General Public License v2 */
 /* L3info - SYR2 Project - SYR DeaDBeeF
  * ============================================================================
  * Audio Server
@@ -9,7 +10,7 @@
  * next request.
  * ----------------------------------------------------------------------------
  * Antoine Pinsard
- * Mar. 15, 2015
+ * Mar. 17, 2015
  */
 #include "audioserver.h"
 
@@ -227,6 +228,7 @@ void send_file_to_client(struct client_list* list, int client_id,
       , sample_size
       , channels
       , nb_packets
+      , last_packet_nb_bytes
       , i
       , j;
     struct client* my_client;
@@ -293,10 +295,12 @@ void send_file_to_client(struct client_list* list, int client_id,
     fclose(file);
 
     nb_packets = file_length / DATA_LENGTH;
+    last_packet_nb_bytes = file_length % DATA_LENGTH;
     if (file_length % DATA_LENGTH != 0)
         nb_packets++;
 
     // Build the stream info packet
+    bzero(msg_buffer, MSG_LENGTH * sizeof(unsigned char));
     msg_buffer[0] = RESP_STREAMINFO;
     for (i = 0; i < 4; i++) {
         msg_buffer[1+i] = (sample_rate >> (8*i)) & 0xFF;
@@ -304,21 +308,19 @@ void send_file_to_client(struct client_list* list, int client_id,
         msg_buffer[9+i] = (channels >> (8*i)) & 0xFF;
         msg_buffer[13+i] = (nb_packets >> (8*i)) & 0xFF;
     }
-    // Pad the remaining part of the message with null characters to avoid data
-    // leaks.
-    for (i = 17; i < MSG_LENGTH-2; i++) {
-        msg_buffer[i] = '\0';
-    }
     msg_buffer[MSG_LENGTH-1] = RESP_STREAMINFO;
 
     send_message(sock, my_client->addr, msg_buffer);
 
     for (i = 0; i < nb_packets; i++) {
+        bzero(msg_buffer, MSG_LENGTH * sizeof(unsigned char));
         msg_buffer[0] = RESP_DATA;
         for (j = 0; j < 4; j++) {
             msg_buffer[1+j] = (i >> (8*j)) & 0xFF;
         }
-        for (j = 0; j < DATA_LENGTH; j++) {
+        for (j = 0; j < DATA_LENGTH &&
+                    (i+1 < nb_packets || j < last_packet_nb_bytes); j++)
+        {
             msg_buffer[5+j] = file_buffer[(i*DATA_LENGTH)+j];
         }
         msg_buffer[MSG_LENGTH-1] = RESP_DATA;
@@ -383,6 +385,7 @@ void gen_error_message(unsigned char* output, unsigned int code,
     }
 
     // First and foremost, store the instruction "RESP_ERROR".
+    bzero(output, MSG_LENGTH * sizeof(unsigned char));
     output[0] = RESP_ERROR;
 
     // Copy the error code to the next 4 bytes
@@ -390,16 +393,10 @@ void gen_error_message(unsigned char* output, unsigned int code,
         output[1+i] = (code >> (8*i)) & 0xFF;
     }
 
-    // Then copy the human-readable to the remaining bytes.
-    for (i = 5; i < (MSG_LENGTH-2); i++) {
-        if (i-5 < msg_len) {
-            output[i] = message[i-5];
-        }
-        else {
-            output[i] = '\0';
-        }
+    // Then copy the human-readable message to the remaining bytes.
+    for (i = 5; i < (MSG_LENGTH-2) && i-5 < msg_len; i++) {
+        output[i] = message[i-5];
     }
-    output[MSG_LENGTH-2] = '\0';
 
     // Eventually, say that this was an error message again.
     output[MSG_LENGTH-1] = RESP_ERROR;
@@ -599,6 +596,7 @@ int main(int argc, char** argv) {
     while (!done) {
         // Wait for a client request
         flen = sizeof(struct sockaddr_in);
+        bzero(&client_addr, sizeof(struct sockaddr_in));
         msg_len = recvfrom(sock, &msg_buffer, MSG_LENGTH, 0,
                            (struct sockaddr *) &client_addr, &flen);
         if (msg_len < 0) {
@@ -644,6 +642,10 @@ int main(int argc, char** argv) {
                             remove_client(cur_served_clients, client_id, 0);
                         }
                         else if (pid == 0) {
+                            for (i=0; available_files[i] != NULL; i++) {
+                                free(available_files[i]);
+                            }
+                            free(available_files);
                             send_file_to_client(cur_served_clients, client_id,
                                                 filename, sock, semid);
                         }

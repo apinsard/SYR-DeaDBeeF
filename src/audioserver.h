@@ -1,3 +1,4 @@
+/* Distributed under the terms of the GNU General Public License v2 */
 /* L3info - SYR2 Project - SYR DeaDBeeF
  * ============================================================================
  * Audio Server
@@ -9,7 +10,7 @@
  * next request.
  * ----------------------------------------------------------------------------
  * Antoine Pinsard
- * Mar. 15, 2015
+ * Mar. 17, 2015
  */
 #ifndef _AUDIOSERVER_H_
 #define _AUDIOSERVER_H_

@@ -1,4 +1,4 @@
-
+/* Distributed under the terms of the GNU General Public License v2 */
 /* L3info - SYR2 Project - SYR DeaDBeeF
  * ============================================================================
  * Deadbeef
@@ -6,7 +6,7 @@
  * Common functions for server and client
  * ----------------------------------------------------------------------------
  * Antoine Pinsard
- * Mar. 15, 2015
+ * Mar. 17, 2015
  */
 #include "deadbeef.h"
 
