@@ -97,6 +97,14 @@ int append_client(struct client_list* list, struct sockaddr_in* addr) {
     assert(addr != NULL);
     assert(list->nb_clients <= MAX_NB_CLIENTS);
 
+    // Clean client list
+    for (client_id = 0; client_id < MAX_NB_CLIENTS; client_id++) {
+        if (list->clients[client_id] != NULL &&
+            list->clients[client_id]->handler == -1) {
+            remove_client(list, client_id, 0);
+        }
+    }
+
     if (list->nb_clients == MAX_NB_CLIENTS) {
         return -1;
     }
@@ -112,7 +120,7 @@ int append_client(struct client_list* list, struct sockaddr_in* addr) {
     // Create the new client
     shmid = shmget(IPC_PRIVATE, sizeof(struct client), 0600);
     if (shmid == -1) {
-        perror("Dynamic allocation failed");
+        perror("Shared memory allocation failed");
         return -2;
     }
     client = (struct client*) shmat(shmid, NULL, 0);
@@ -120,6 +128,7 @@ int append_client(struct client_list* list, struct sockaddr_in* addr) {
         perror("Dynamic allocation failed");
         return -2;
     }
+    client->shmid = shmid;
     client->addr = addr;
     client->handler = -1;
     client->heartbeat_counter = HEARTBEAT_THRESHOLD;
@@ -143,6 +152,7 @@ int append_client(struct client_list* list, struct sockaddr_in* addr) {
 struct sockaddr_in* remove_client(struct client_list* list, int client_id,
                                   int kill_handler)
 {
+    int shmid;
     struct sockaddr_in* addr;
     pid_t handler;
 
@@ -157,8 +167,11 @@ struct sockaddr_in* remove_client(struct client_list* list, int client_id,
     handler = list->clients[client_id]->handler;
 
     addr = list->clients[client_id]->addr;
-    free(list->clients[client_id]);
+    shmid = list->clients[client_id]->shmid;
+    shmdt((void*) list->clients[client_id]);
+    shmctl(shmid, IPC_RMID, NULL);
     list->clients[client_id] = NULL;
+    list->nb_clients--;
 
     if (kill_handler && handler > 0) {
         kill(handler, SIGKILL);
@@ -231,7 +244,8 @@ void send_file_to_client(struct client_list* list, int client_id,
                            "An error occured while attempting to read the "
                            "requested filed.");
         perror("Error while attempting to read the audio file");
-        remove_client(list, client_id, 0);
+        my_client->handler = -1;
+        shmdt((void*) my_client);
         shmdt((void*) list);
         free(filename);
         exit(EXIT_FAILURE);
@@ -243,10 +257,11 @@ void send_file_to_client(struct client_list* list, int client_id,
                            "An error occured while attempting to read the "
                            "requested filed.");
         fprintf(stderr,
-                "An error happened while attempting to open %s for reading.\n",
+                "An error happened while attempting to open %s for reading",
                 filename);
         perror("");
-        remove_client(list, client_id, 0);
+        my_client->handler = -1;
+        shmdt((void*) my_client);
         shmdt((void*) list);
         free(filename);
         exit(EXIT_FAILURE);
@@ -311,7 +326,8 @@ void send_file_to_client(struct client_list* list, int client_id,
 
     free(file_buffer);
 
-    remove_client(list, client_id, 0);
+    my_client->handler = -1;
+    shmdt((void*) my_client);
     shmdt((void*) list);
 
     exit(EXIT_SUCCESS);

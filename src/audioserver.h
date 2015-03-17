@@ -23,6 +23,7 @@
 #define HEARTBEAT_THRESHOLD (10 * HEARTBEAT_FREQUENCY)
 
 struct client {
+    int shmid; // Share memory identifier
     struct sockaddr_in* addr;
     pid_t handler;
     int heartbeat_counter;

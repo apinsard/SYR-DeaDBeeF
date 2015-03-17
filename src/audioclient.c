@@ -28,8 +28,7 @@ int main(int argc, char** argv) {
     pid_t pid;
     fd_set read_set;
     struct timeval timeout;
-    struct sockaddr_in server_addr
-                     , recv_addr;
+    struct sockaddr_in server_addr;
     unsigned char msg_buffer[MSG_LENGTH];
     unsigned char* data_buffer;
 

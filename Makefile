@@ -23,7 +23,7 @@ $(BIN)/audio.o: $(SRC)/sysprog-audio/audio.c
 $(BIN)/deadbeef.o: $(SRC)/deadbeef.c
 	$(CC) -c -o $@ $^
 
-.PHONY: clean mrproper player server client report
+.PHONY: clean mrproper shmclean player server client report
 
 clean:
 	rm -f $(BIN)/*.o
@@ -32,3 +32,6 @@ clean:
 
 mrproper:
 	rm -f $(BIN)/*
+
+shmclean:
+	ipcs -m | awk '{ if ($$6=="0") system("ipcrm shm "$$2""); }'
