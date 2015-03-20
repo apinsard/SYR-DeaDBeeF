@@ -12,6 +12,7 @@
 #define _DEADBEEF_H_
 
 #include <assert.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -25,7 +26,7 @@
 #include <sys/types.h>
 #include "sysprog-audio/audio.h"
 
-#define MSG_LENGTH 2048
+#define MSG_LENGTH 4096
 #define DATA_LENGTH (MSG_LENGTH - 1 - 4 - 1)
 #define MESSERR_LENGTH (MSG_LENGTH - 1 - 4 - 1)
 

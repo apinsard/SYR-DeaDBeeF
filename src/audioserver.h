@@ -17,7 +17,6 @@
 
 #include <glob.h>
 #include <math.h>
-#include <signal.h>
 #include <sys/sem.h>
 #include "deadbeef.h"
 

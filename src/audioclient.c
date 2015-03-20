@@ -8,9 +8,18 @@
  * the data.
  * ----------------------------------------------------------------------------
  * Antoine Pinsard
- * Mar. 17, 2015
+ * Mar. 19, 2015
  */
 #include "audioclient.h"
+
+
+volatile sig_atomic_t done = 0;
+
+
+void term(int signum) {
+    done = 1;
+}
+
 
 void print_errmess(unsigned char* raw_msg) {
     int errcode
@@ -25,6 +34,7 @@ void print_errmess(unsigned char* raw_msg) {
     message[MESSERR_LENGTH-1] = '\0';
     printf("Error 0x%x, server said: %s\n", errcode, message);
 }
+
 
 int main(int argc, char** argv) {
     int sock
@@ -46,6 +56,7 @@ int main(int argc, char** argv) {
     struct sockaddr_in server_addr;
     unsigned char msg_buffer[MSG_LENGTH];
     unsigned char* data_buffer;
+    struct sigaction action;
 
     // Print notice
     printf("SYR2/DeaDBeeF client, Copyright (C) 2015 Antoine Pinsard\n");
@@ -59,6 +70,12 @@ int main(int argc, char** argv) {
         fprintf(stderr, "Usage: audioclient <server_host_name> <file_name>\n");
         exit(EXIT_FAILURE);
     }
+
+    // Handle signals
+    memset(&action, 0, sizeof(struct sigaction));
+    action.sa_handler = term;
+    sigaction(SIGTERM, &action, NULL);
+    sigaction(SIGINT, &action, NULL);
 
     // Open connection to the server
     server_addr.sin_family = AF_INET;
@@ -170,7 +187,7 @@ int main(int argc, char** argv) {
     }
     else if (pid == 0) {
         packet_id = -1;
-        for (packets_received = 0; packets_received < nb_packets;
+        for (packets_received = 0; packets_received < nb_packets && done == 0;
              packets_received++)
         {
             FD_ZERO(&read_set);
@@ -221,7 +238,7 @@ int main(int argc, char** argv) {
         }
     }
     else {
-        for (i = 0; i < nb_packets; i++) {
+        for (i = 0; i < nb_packets && done == 0; i++) {
             write(audout_fd, data_buffer+(i*DATA_LENGTH),
                   DATA_LENGTH * sizeof(unsigned char));
         }
