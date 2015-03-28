@@ -10,7 +10,7 @@
  * next request.
  * ----------------------------------------------------------------------------
  * Antoine Pinsard
- * Mar. 19, 2015
+ * Mar. 28, 2015
  */
 #include "audioserver.h"
 
@@ -506,7 +506,7 @@ int file_is_available(char* filename, char** available_files) {
 
     for (name = available_files[0]; name != NULL; name++) {
         if (strlen(name) == strlen(filename)) {
-            if (strncmp(name, filename, strlen(filename)) == 0) {
+            if (strcmp(name, filename) == 0) {
                 return 1;
             }
         }

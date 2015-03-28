@@ -8,7 +8,7 @@
  * the data.
  * ----------------------------------------------------------------------------
  * Antoine Pinsard
- * Mar. 19, 2015
+ * Mar. 28, 2015
  */
 #include "audioclient.h"
 
@@ -48,7 +48,8 @@ int main(int argc, char** argv) {
       , sel
       , i
       , packet_id
-      , packets_received;
+      , packets_received
+      , force_mono;
     socklen_t flen;
     pid_t pid;
     fd_set read_set;
@@ -68,7 +69,17 @@ int main(int argc, char** argv) {
     // Check arguments
     if (argc < 3) {
         fprintf(stderr, "Usage: audioclient <server_host_name> <file_name>\n");
+        fprintf(stderr, "       [filter [param ...] ...]\n");
         exit(EXIT_FAILURE);
+    }
+
+    force_mono = 0;
+
+    // Parse filters
+    for (i = 3; i < argc; i++) {
+        if (strcmp(argv[i], "force_mono") == 0) {
+            force_mono = 1;
+        }
     }
 
     // Handle signals
@@ -148,6 +159,10 @@ int main(int argc, char** argv) {
                     msg_buffer[0] & 0xff);
             close(sock);
             exit(EXIT_FAILURE);
+    }
+
+    if (force_mono != 0) {
+        channels = 1;
     }
 
     // Init audio file descriptor
